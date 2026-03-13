@@ -1,0 +1,410 @@
+{% extends 'merger/base.html' %}
+{% load dict_extras %}
+{% block title %}Analyse & Merge — ExcelMerge Pro{% endblock %}
+
+{% block extra_head %}
+<style>
+  .analysis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+  @media (max-width: 768px) { .analysis-grid { grid-template-columns: 1fr; } }
+  .stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 0.75rem; margin-bottom: 1.25rem; }
+  .stat { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem 1rem; text-align: center; }
+  .stat-value { font-size: 1.5rem; font-weight: 800; color: var(--primary); }
+  .stat-label { font-size: 0.73rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.4px; }
+  .col-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1rem; }
+  .col-chip {
+    padding: 3px 11px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: #EEF2FF;
+    color: #3730A3;
+    border: 1px solid #C7D2FE;
+  }
+  .col-chip.common { background: #D1FAE5; color: #065F46; border-color: #A7F3D0; }
+  /* TABLE PREVIEW */
+  .table-wrap { overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+  .preview-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  .preview-table th {
+    background: var(--primary); color: white;
+    padding: 8px 12px; text-align: left; font-weight: 600;
+    white-space: nowrap;
+  }
+  .preview-table td {
+    padding: 7px 12px; border-bottom: 1px solid var(--border);
+    color: var(--text); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .preview-table tr:nth-child(even) td { background: var(--surface2); }
+  /* MERGE CONFIG */
+  .merge-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; margin-bottom: 1.5rem; box-shadow: var(--shadow); }
+  .form-group { margin-bottom: 1.25rem; }
+  .form-label { display: block; font-size: 0.88rem; font-weight: 700; color: var(--primary); margin-bottom: 0.4rem; }
+  .form-label span { color: var(--text-muted); font-weight: 400; }
+  select, input[type=text] {
+    width: 100%; padding: 0.65rem 1rem; border-radius: var(--radius-sm);
+    border: 2px solid var(--border); background: var(--surface2);
+    font-size: 0.95rem; color: var(--text);
+    transition: border-color 0.2s; outline: none;
+    -webkit-appearance: none; appearance: none;
+  }
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23718096' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 2.5rem;
+  }
+  select:focus, input[type=text]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,180,216,0.12); }
+  .radio-group { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+  .radio-card {
+    flex: 1; min-width: 130px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    text-align: center;
+  }
+  .radio-card input { position: absolute; opacity: 0; }
+  .radio-card:hover { border-color: var(--accent); }
+  .radio-card.selected { border-color: var(--accent); background: #444444; }
+  .radio-card .rc-title { font-weight: 700; font-size: 0.88rem; color: var(--primary); margin-bottom: 2px; }
+  .radio-card .rc-desc { font-size: 0.75rem; color: var(--text-muted); }
+  /* SUGGESTIONS */
+  .suggestion-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 0.5rem; }
+  .suggestion-chip {
+    padding: 5px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600;
+    border: 2px solid var(--accent); color: var(--accent); background: transparent;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .suggestion-chip:hover { background: var(--accent); color: white; }
+  /* RESULT */
+  #result-section { display: none; }
+  .result-card {
+    background: linear-gradient(135deg, #2FC25B, #047857);
+    color: white;
+    border-radius: var(--radius);
+    padding: 2rem;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+  }
+  .result-stats { display: flex; justify-content: center; gap: 2rem; margin: 1.25rem 0; flex-wrap: wrap; }
+  .result-stat { text-align: center; }
+  .result-stat-value { font-size: 2rem; font-weight: 800; }
+  .result-stat-label { font-size: 0.8rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.5px; }
+  /* TWO-COL FORM */
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width:640px) { .form-row { grid-template-columns: 1fr; } }
+  .section-heading {
+    font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 0.75rem;
+    padding-bottom: 0.4rem; border-bottom: 1px solid var(--border);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="steps" style="margin-bottom:2.5rem;">
+  <div class="step done"><div class="step-circle">✓</div><div class="step-label">Upload</div></div>
+  <div class="step-line done"></div>
+  <div class="step active"><div class="step-circle">2</div><div class="step-label">Analyse</div></div>
+  <div class="step-line"></div>
+  <div class="step active"><div class="step-circle">3</div><div class="step-label">Configure</div></div>
+  <div class="step-line"></div>
+  <div class="step"><div class="step-circle">4</div><div class="step-label">Download</div></div>
+</div>
+
+<!-- FILE ANALYSIS -->
+<div class="analysis-grid">
+  <!-- File 1 -->
+  <div class="card">
+    <div class="card-title">
+      📄 {{ analysis1.name }}
+    </div>
+    <div class="stat-row">
+      <div class="stat"><div class="stat-value">{{ analysis1.rows }}</div><div class="stat-label">Rows</div></div>
+      <div class="stat"><div class="stat-value">{{ analysis1.col_count }}</div><div class="stat-label">Columns</div></div>
+      <div class="stat"><div class="stat-value">{{ analysis1.duplicates }}</div><div class="stat-label">Dupes</div></div>
+    </div>
+    <div class="section-heading">Columns</div>
+    <div class="col-list">
+      {% for col in analysis1.columns %}
+        <span class="col-chip {% if col in common_cols %}common{% endif %}">{{ col }}</span>
+      {% endfor %}
+    </div>
+    <div class="section-heading" style="margin-top:1rem;">Preview (first 5 rows)</div>
+    <div class="table-wrap">
+      <table class="preview-table">
+        <thead>
+          <tr>{% for col in analysis1.columns %}<th>{{ col }}</th>{% endfor %}</tr>
+        </thead>
+        <tbody>
+          {% for row in analysis1.sample %}
+          <tr>{% for col in analysis1.columns %}<td title="{{ row|get_item:col }}">{{ row|get_item:col }}</td>{% endfor %}</tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- File 2 -->
+  <div class="card">
+    <div class="card-title">
+      📄 {{ analysis2.name }}
+    </div>
+    <div class="stat-row">
+      <div class="stat"><div class="stat-value">{{ analysis2.rows }}</div><div class="stat-label">Rows</div></div>
+      <div class="stat"><div class="stat-value">{{ analysis2.col_count }}</div><div class="stat-label">Columns</div></div>
+      <div class="stat"><div class="stat-value">{{ analysis2.duplicates }}</div><div class="stat-label">Dupes</div></div>
+    </div>
+    <div class="section-heading">Columns</div>
+    <div class="col-list">
+      {% for col in analysis2.columns %}
+        <span class="col-chip {% if col in common_cols %}common{% endif %}">{{ col }}</span>
+      {% endfor %}
+    </div>
+    <div class="section-heading" style="margin-top:1rem;">Preview (first 5 rows)</div>
+    <div class="table-wrap">
+      <table class="preview-table">
+        <thead>
+          <tr>{% for col in analysis2.columns %}<th>{{ col }}</th>{% endfor %}</tr>
+        </thead>
+        <tbody>
+          {% for row in analysis2.sample %}
+          <tr>{% for col in analysis2.columns %}<td title="{{ row|get_item:col }}">{{ row|get_item:col }}</td>{% endfor %}</tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- COMMON COLUMNS CALLOUT -->
+{% if common_cols %}
+<div class="alert alert-success" style="margin-bottom:1.5rem;">
+  ✓ Found <strong>{{ common_cols|length }} shared column(s)</strong> across both files — highlighted in green above.
+  These are your merge candidates.
+</div>
+{% else %}
+<div class="alert alert-error" style="margin-bottom:1.5rem;">
+  ⚠ No common columns detected. Merging is still possible but you may need to rename columns in your source files first.
+</div>
+{% endif %}
+
+<!-- MERGE CONFIGURATION -->
+<div class="merge-card">
+  <div class="card-title" style="margin-bottom:1.5rem;">⚙ Merge Configuration</div>
+
+  <!-- Key suggestions -->
+  {% if key_suggestions %}
+  <div class="form-group">
+    <div class="form-label">Suggested Merge Keys <span>(click to select)</span></div>
+    <div class="suggestion-row">
+      {% for s in key_suggestions %}
+      <button type="button" class="suggestion-chip" onclick="selectKey('{{ s.col }}')">
+        {{ s.col }}
+      </button>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="form-row">
+    <!-- Merge key -->
+    <div class="form-group">
+      <label class="form-label" for="merge_key">Merge Key Column <span>(shared column to join on)</span></label>
+      <select id="merge_key" name="merge_key">
+        <option value="">— Select a column —</option>
+        {% for col in common_cols %}
+        <option value="{{ col }}">{{ col }}</option>
+        {% endfor %}
+        {% if not common_cols %}
+        {% for col in all_cols1 %}
+        <option value="{{ col }}" disabled>{{ col }} (File 1 only)</option>
+        {% endfor %}
+        {% endif %}
+      </select>
+    </div>
+    <!-- Output name -->
+    <div class="form-group">
+      <label class="form-label" for="output_name">Output File Name <span>(no extension needed)</span></label>
+      <input type="text" id="output_name" value="merged_output" placeholder="merged_output" maxlength="80">
+    </div>
+  </div>
+
+  <!-- Merge type -->
+  <div class="form-group">
+    <div class="form-label">Join Type</div>
+    <div class="radio-group" id="merge-type-group">
+      <label class="radio-card selected">
+        <input type="radio" name="merge_type" value="outer" checked onchange="selectRadio(this)">
+        <div class="rc-title">Outer</div>
+        <div class="rc-desc">All rows from both files</div>
+      </label>
+      <label class="radio-card">
+        <input type="radio" name="merge_type" value="inner" onchange="selectRadio(this)">
+        <div class="rc-title">Inner</div>
+        <div class="rc-desc">Only matching rows</div>
+      </label>
+      <label class="radio-card">
+        <input type="radio" name="merge_type" value="left" onchange="selectRadio(this)">
+        <div class="rc-title">Left</div>
+        <div class="rc-desc">All File 1 rows + matches</div>
+      </label>
+      <label class="radio-card">
+        <input type="radio" name="merge_type" value="right" onchange="selectRadio(this)">
+        <div class="rc-title">Right</div>
+        <div class="rc-desc">All File 2 rows + matches</div>
+      </label>
+    </div>
+  </div>
+
+  <!-- Duplicate handling -->
+  <div class="form-group">
+    <div class="form-label">Duplicate Handling</div>
+    <div class="radio-group" id="dupe-group">
+      <label class="radio-card selected">
+        <input type="radio" name="handle_duplicates" value="keep_first" checked onchange="selectRadio(this)">
+        <div class="rc-title">Keep First</div>
+        <div class="rc-desc">First occurrence wins</div>
+      </label>
+      <label class="radio-card">
+        <input type="radio" name="handle_duplicates" value="keep_last" onchange="selectRadio(this)">
+        <div class="rc-title">Keep Last</div>
+        <div class="rc-desc">Last occurrence wins</div>
+      </label>
+      <label class="radio-card">
+        <input type="radio" name="handle_duplicates" value="keep_all" onchange="selectRadio(this)">
+        <div class="rc-title">Keep All</div>
+        <div class="rc-desc">Retain all duplicates</div>
+      </label>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:flex-end;margin-top:0.5rem;">
+    <button class="btn btn-accent btn-lg" id="merge-btn" onclick="doMerge()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/>
+      </svg>
+      Merge Files
+      <div class="spinner" id="merge-spinner"></div>
+    </button>
+  </div>
+</div>
+
+<!-- RESULT SECTION -->
+<div id="result-section">
+  <div class="result-card">
+    <div style="font-size:2.5rem;margin-bottom:0.5rem;">🎉</div>
+    <h2 style="font-size:1.5rem;font-weight:800;margin-bottom:0.25rem;">Merge Complete!</h2>
+    <p style="opacity:0.85;font-size:0.95rem;" id="result-subtitle">Your merged spreadsheet is ready.</p>
+    <div class="result-stats">
+      <div class="result-stat">
+        <div class="result-stat-value" id="r-rows">—</div>
+        <div class="result-stat-label">Total Rows</div>
+      </div>
+      <div class="result-stat">
+        <div class="result-stat-value" id="r-cols">—</div>
+        <div class="result-stat-label">Columns</div>
+      </div>
+      <div class="result-stat">
+        <div class="result-stat-value" id="r-f1">—</div>
+        <div class="result-stat-label">File 1 Rows</div>
+      </div>
+      <div class="result-stat">
+        <div class="result-stat-value" id="r-f2">—</div>
+        <div class="result-stat-label">File 2 Rows</div>
+      </div>
+    </div>
+    <a href="#" class="btn btn-success btn-lg" id="download-btn" style="display:inline-flex;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Download Merged Excel
+    </a>
+    <div style="margin-top:1rem;">
+      <a href="/" class="btn btn-outline" style="color:rgba(255,255,255,0.7);border-color:rgba(255,255,255,0.3);">
+        ↺ Merge More Files
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const analysis1 = {{ analysis1_json|safe }};
+const analysis2 = {{ analysis2_json|safe }};
+
+function selectKey(col) {
+  const sel = document.getElementById('merge_key');
+  sel.value = col;
+  sel.dispatchEvent(new Event('change'));
+  showToast(`Selected merge key: ${col}`, 'success');
+}
+
+function selectRadio(input) {
+  const group = input.closest('.radio-group');
+  group.querySelectorAll('.radio-card').forEach(c => c.classList.remove('selected'));
+  input.closest('.radio-card').classList.add('selected');
+}
+
+function getCookie(name) {
+  let v = null;
+  document.cookie.split(';').forEach(c => {
+    c = c.trim();
+    if (c.startsWith(name+'=')) v = decodeURIComponent(c.slice(name.length+1));
+  });
+  return v;
+}
+
+async function doMerge() {
+  const key = document.getElementById('merge_key').value;
+  if (!key) { showToast('Please select a merge key column.', 'error'); return; }
+
+  const mergeType = document.querySelector('input[name=merge_type]:checked').value;
+  const handleDupes = document.querySelector('input[name=handle_duplicates]:checked').value;
+  const outputName = document.getElementById('output_name').value || 'merged_output';
+
+  const btn = document.getElementById('merge-btn');
+  const spinner = document.getElementById('merge-spinner');
+  btn.disabled = true;
+  spinner.classList.add('show');
+
+  const formData = new FormData();
+  formData.append('merge_key', key);
+  formData.append('merge_type', mergeType);
+  formData.append('handle_duplicates', handleDupes);
+  formData.append('output_name', outputName);
+
+  try {
+    const res = await fetch('/merge/', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      body: formData,
+    });
+    const data = await res.json();
+    if (data.success) {
+      const s = data.stats;
+      document.getElementById('r-rows').textContent = s.total_rows.toLocaleString();
+      document.getElementById('r-cols').textContent = s.columns.toLocaleString();
+      document.getElementById('r-f1').textContent = s.file1_rows.toLocaleString();
+      document.getElementById('r-f2').textContent = s.file2_rows.toLocaleString();
+      document.getElementById('result-subtitle').textContent =
+        `Merged on "${key}" using ${mergeType} join.`;
+      document.getElementById('download-btn').href = `/download/${data.filename}/`;
+      document.getElementById('result-section').style.display = 'block';
+      document.getElementById('result-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      showToast('Merge successful! 🎉', 'success');
+    } else {
+      showToast('Error: ' + (data.error || 'Unknown error'), 'error');
+    }
+  } catch (e) {
+    showToast('Network error. Please try again.', 'error');
+  }
+  btn.disabled = false;
+  spinner.classList.remove('show');
+}
+</script>
+{% endblock %}

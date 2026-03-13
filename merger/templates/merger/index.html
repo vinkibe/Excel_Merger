@@ -1,0 +1,236 @@
+{% extends 'merger/base.html' %}
+{% block title %}Upload Files — ExcelMerge Pro{% endblock %}
+
+{% block extra_head %}
+<style>
+  .hero { text-align: center; margin-bottom: 2.5rem; }
+  .hero h1 { font-size: 2.2rem; font-weight: 800; color: var(--primary); letter-spacing: -1px; margin-bottom: 0.5rem; }
+  .hero p { color: var(--text-muted); font-size: 1.05rem; max-width: 480px; margin: 0 auto; }
+  .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+  @media (max-width: 640px) { .upload-grid { grid-template-columns: 1fr; } }
+  .drop-zone {
+    border: 2.5px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    background: var(--surface2);
+    position: relative;
+    overflow: hidden;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: #444444;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+  }
+  .drop-zone.has-file {
+    border-color: var(--success);
+    background: #454545;
+  }
+  .drop-icon {
+    width: 56px; height: 56px;
+    border-radius: 14px;
+    background: var(--primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 12px rgba(30,58,95,0.2);
+  }
+  .drop-zone.has-file .drop-icon { background: var(--success); }
+  .drop-zone h3 { font-size: 1rem; font-weight: 700; color: var(--primary); margin-bottom: 0.25rem; }
+  .drop-zone p { font-size: 0.85rem; color: var(--text-muted); }
+  .drop-zone .file-label { font-size: 0.8rem; color: var(--accent); font-weight: 600; margin-top: 0.75rem; }
+  .drop-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .file-name {
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #065F46;
+    background: #D1FAE5;
+    padding: 4px 12px;
+    border-radius: 20px;
+    display: inline-block;
+  }
+  .divider {
+    display: flex; align-items: center; gap: 1rem;
+    margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.85rem;
+  }
+  .divider::before, .divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+  .features {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-top: 2.5rem;
+  }
+  @media (max-width: 640px) { .features { grid-template-columns: 1fr; } }
+  .feature-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    text-align: center;
+  }
+  .feature-icon {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.75rem;
+    font-size: 1.3rem;
+  }
+  .feature-card h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.25rem; color: var(--primary); }
+  .feature-card p { font-size: 0.8rem; color: var(--text-muted); }
+  .actions { display: flex; justify-content: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hero">
+  <h1>Excel Sheet Merger</h1>
+  <p>Upload two spreadsheet files, analyse their structure, then merge them intelligently.</p>
+</div>
+
+<!-- Steps -->
+<div class="steps">
+  <div class="step active">
+    <div class="step-circle">1</div>
+    <div class="step-label">Upload</div>
+  </div>
+  <div class="step-line"></div>
+  <div class="step">
+    <div class="step-circle">2</div>
+    <div class="step-label">Analyse</div>
+  </div>
+  <div class="step-line"></div>
+  <div class="step">
+    <div class="step-circle">3</div>
+    <div class="step-label">Configure</div>
+  </div>
+  <div class="step-line"></div>
+  <div class="step">
+    <div class="step-circle">4</div>
+    <div class="step-label">Download</div>
+  </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">⚠ {{ error }}</div>
+{% endif %}
+
+<form method="post" action="/analyse/" enctype="multipart/form-data" id="upload-form">
+  {% csrf_token %}
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-title">Upload Your Files</div>
+    <div class="upload-grid">
+      <!-- File 1 -->
+      <div class="drop-zone" id="drop1" onclick="document.getElementById('file1').click()">
+        <input type="file" id="file1" name="file1" accept=".xlsx,.xls,.csv" required
+               onchange="handleFile(this, 'drop1', 'name1')">
+        <div class="drop-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+            <line x1="9" y1="15" x2="15" y2="15"/>
+          </svg>
+        </div>
+        <h3>First Spreadsheet</h3>
+        <p>Drag &amp; drop or click to browse</p>
+        <div class="file-label">.xlsx · .xls · .csv</div>
+        <div class="file-name" id="name1" style="display:none;"></div>
+      </div>
+      <!-- File 2 -->
+      <div class="drop-zone" id="drop2" onclick="document.getElementById('file2').click()">
+        <input type="file" id="file2" name="file2" accept=".xlsx,.xls,.csv" required
+               onchange="handleFile(this, 'drop2', 'name2')">
+        <div class="drop-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+            <line x1="9" y1="15" x2="15" y2="15"/>
+          </svg>
+        </div>
+        <h3>Second Spreadsheet</h3>
+        <p>Drag &amp; drop or click to browse</p>
+        <div class="file-label">.xlsx · .xls · .csv</div>
+        <div class="file-name" id="name2" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div class="divider">or drag files here</div>
+    <div class="actions">
+      <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        Analyse Files
+        <div class="spinner" id="spinner"></div>
+      </button>
+    </div>
+  </div>
+</form>
+
+<!-- Features -->
+<div class="features">
+  <div class="feature-card">
+    <div class="feature-icon" style="background:#EEF2FF;">🔍</div>
+    <h4>Smart Analysis</h4>
+    <p>Auto-detects columns, data types, and suggests the best merge keys</p>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon" style="background:#F0FDF4;">⚡</div>
+    <h4>Flexible Merging</h4>
+    <p>Inner, outer, left or right joins with duplicate handling options</p>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon" style="background:#FFF7ED;">📥</div>
+    <h4>Styled Output</h4>
+    <p>Download a formatted Excel file with all source sheets included</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function handleFile(input, dropId, nameId) {
+  const drop = document.getElementById(dropId);
+  const nameEl = document.getElementById(nameId);
+  if (input.files[0]) {
+    const name = input.files[0].name;
+    drop.classList.add('has-file');
+    nameEl.textContent = '✓ ' + name;
+    nameEl.style.display = 'inline-block';
+  }
+}
+
+// Drag and drop
+document.querySelectorAll('.drop-zone').forEach(zone => {
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const input = zone.querySelector('input[type=file]');
+    const nameId = zone.id === 'drop1' ? 'name1' : 'name2';
+    if (e.dataTransfer.files[0]) {
+      input.files = e.dataTransfer.files;
+      handleFile(input, zone.id, nameId);
+    }
+  });
+});
+
+document.getElementById('upload-form').addEventListener('submit', function() {
+  document.getElementById('submit-btn').disabled = true;
+  document.getElementById('spinner').classList.add('show');
+});
+</script>
+{% endblock %}

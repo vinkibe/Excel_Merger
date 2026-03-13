@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}ExcelMerge{% endblock %}</title>
+  <style>
+    :root {
+      --primary: #FA5B0F;
+      --primary-light: #f89365;
+      --accent: #55cc5f;
+      --accent2: #77f187;
+      --success: #2fc25b;
+      --warning: #FBB917;
+      --danger: #EF233C;
+      --bg: #151515;
+      --surface: #222222;
+      --surface2: #333333;
+      --border: #444444;
+      --text: #FFFFFF;
+      --text-muted: #ececec;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+      --shadow: 0 4px 16px rgba(0,0,0,0.10);
+      --shadow-lg: 0 10px 40px rgba(0,0,0,0.14);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    /* NAV */
+    nav {
+      background: var(--primary);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: white;
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .nav-brand svg { opacity: 0.9; }
+    .nav-badge {
+      background: var(--accent);
+      color: white;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    /* MAIN */
+    main { max-width: 1100px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+    /* CARDS */
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 2rem;
+      border: 1px solid var(--border);
+    }
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title::before {
+      content: '';
+      display: block;
+      width: 4px;
+      height: 1.1em;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+    /* BUTTONS */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0.65rem 1.5rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: white;
+      box-shadow: 0 2px 8px rgba(30,58,95,0.3);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(30,58,95,0.4); }
+    .btn-accent {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
+      box-shadow: 0 2px 8px rgba(0,180,216,0.3);
+    }
+    .btn-accent:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,180,216,0.4); }
+    .btn-success {
+      background: linear-gradient(135deg, #05b589, var(--success));
+      color: white;
+      box-shadow: 0 2px 8px rgba(6,214,160,0.3);
+    }
+    .btn-success:hover { transform: translateY(-1px); }
+    .btn-outline {
+      background: transparent;
+      border: 2px solid var(--border);
+      color: var(--text-muted);
+    }
+    .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-lg { padding: 0.85rem 2rem; font-size: 1.05rem; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+    /* ALERTS */
+    .alert {
+      padding: 1rem 1.25rem;
+      border-radius: var(--radius-sm);
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.95rem;
+    }
+    .alert-error { background: #FEE2E2; color: #C0392B; border: 1px solid #F5C6CB; }
+    .alert-success { background: #D1FAE5; color: #065F46; border: 1px solid #A7F3D0; }
+    /* BADGE */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+    .badge-blue { background: #DBEAFE; color: #1D4ED8; }
+    .badge-green { background: #D1FAE5; color: #065F46; }
+    .badge-orange { background: #FEF3C7; color: #92400E; }
+    /* TOAST */
+    #toast-container {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .toast {
+      background: var(--primary);
+      color: white;
+      padding: 1rem 1.5rem;
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-lg);
+      font-size: 0.9rem;
+      animation: slideIn 0.3s ease;
+      max-width: 320px;
+    }
+    .toast.success { background: #065F46; border-left: 4px solid var(--success); }
+    .toast.error { background: #7F1D1D; border-left: 4px solid var(--danger); }
+    @keyframes slideIn {
+      from { transform: translateX(120%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    /* SPINNER */
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2.5px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    .spinner.show { display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    /* STEP INDICATOR */
+    .steps {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 2.5rem;
+      gap: 0;
+    }
+    .step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+      flex: 1;
+      max-width: 160px;
+    }
+    .step-circle {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.95rem;
+      background: var(--border);
+      color: var(--text-muted);
+      border: 2px solid var(--border);
+      position: relative;
+      z-index: 1;
+      transition: all 0.3s;
+    }
+    .step.active .step-circle {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(30,58,95,0.15);
+    }
+    .step.done .step-circle {
+      background: var(--success);
+      color: white;
+      border-color: var(--success);
+    }
+    .step-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .step.active .step-label { color: var(--primary); }
+    .step.done .step-label { color: var(--success); }
+    .step-line {
+      flex: 1;
+      height: 2px;
+      background: var(--border);
+      margin-top: -28px;
+      transition: background 0.3s;
+    }
+    .step-line.done { background: var(--success); }
+    /* RESPONSIVE */
+    @media (max-width: 640px) {
+      main { padding: 1.5rem 1rem 3rem; }
+      .card { padding: 1.25rem; }
+      .steps { gap: 0.25rem; }
+      .step-label { display: none; }
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+<nav>
+  <a href="/" class="nav-brand">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect width="28" height="28" rx="6" fill="rgba(255,255,255,0.15)"/>
+      <rect x="4" y="7" width="10" height="14" rx="2" fill="#00B4D8" opacity="0.9"/>
+      <rect x="14" y="7" width="10" height="14" rx="2" fill="white" opacity="0.6"/>
+      <path d="M11 14h6" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M14 11v6" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    ExcelMerge
+    <span class="nav-badge">Pro</span>
+  </a>
+  <a href="/reset/" class="btn btn-outline" style="color:rgba(255,255,255,0.7);border-color:rgba(255,255,255,0.2);padding:0.4rem 1rem;font-size:0.85rem;">
+    ↺ Start Over
+  </a>
+</nav>
+<main>
+  {% block content %}{% endblock %}
+</main>
+<div id="toast-container"></div>
+<script>
+function showToast(msg, type='info') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
