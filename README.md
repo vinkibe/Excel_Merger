@@ -9,7 +9,6 @@ A modern Django web application for merging Excel and CSV files with intelligent
 - Four join types: Inner, Outer, Left, Right
 - Duplicate handling: keep first, last, or all
 - Styled Excel output with all source sheets included
-- One-click download
 
 ## Setup & Run
 
